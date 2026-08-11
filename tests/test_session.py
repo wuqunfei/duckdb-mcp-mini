@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Generator
+
 import duckdb
 import pytest
 
@@ -9,7 +11,7 @@ from duckdb_mcp.session import DuckDBSession
 
 
 @pytest.fixture()
-def session() -> DuckDBSession:
+def session() -> Generator[DuckDBSession, Any, None]:
     s = DuckDBSession(db_path=":memory:")
     yield s
     s.close()
