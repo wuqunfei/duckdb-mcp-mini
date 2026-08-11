@@ -73,7 +73,7 @@ uv run duckdb-mcp --db :memory:                        # via uv, no install
 
 ## Configure Claude Desktop
 
-Add one of the following to your `claude_desktop_config.json`, then restart Claude. A copy-paste starting point lives in [`claude_desktop_config.json`](./claude_desktop_config.json).
+Add one of the following to your `claude_desktop_config.json`, then restart Claude.
 
 **Run from Git (no install):**
 
@@ -242,7 +242,6 @@ duckdb-mcp-mini/
 │   ├── ci.yml             # lint + type + test on py3.12 / py3.13
 │   └── release.yml        # build on tag (PyPI publish disabled)
 ├── pyproject.toml
-├── claude_desktop_config.json
 ├── LICENSE
 └── README.md
 ```
