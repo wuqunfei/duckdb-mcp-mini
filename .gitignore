@@ -16,3 +16,4 @@ dist/
 # DuckDB local data
 *.duckdb
 *.duckdb.wal
+uv.lock
