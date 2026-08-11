@@ -8,7 +8,7 @@ A minimal [**Model Context Protocol**](https://modelcontextprotocol.io) server t
 
 [![CI](https://github.com/wuqunfei/duckdb-mcp-mini/actions/workflows/ci.yml/badge.svg)](https://github.com/wuqunfei/duckdb-mcp-mini/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?logo=python&logoColor=white)
-![DuckDB](https://img.shields.io/badge/DuckDB-1.5.5%2B-FFF000?logo=duckdb&logoColor=black)
+![DuckDB](https://img.shields.io/badge/DuckDB-1.5.2-FFF000?logo=duckdb&logoColor=black)
 ![MCP](https://img.shields.io/badge/MCP-2.0-6E56CF)
 ![Code style](https://img.shields.io/badge/code%20style-black-000000)
 ![License](https://img.shields.io/badge/license-MIT-3DA639)
@@ -77,7 +77,7 @@ uvx --from git+https://github.com/wuqunfei/duckdb-mcp-mini duckdb-mcp --db :memo
 
 > ℹ️ This package is **not published to PyPI** — install from source or run from Git as shown above.
 
-**Requirements:** 🐍 Python 3.11–3.14 · 🦆 DuckDB 1.5.5+ · 🔌 MCP SDK 2.0.0+
+**Requirements:** 🐍 Python 3.11–3.14 · 🦆 DuckDB 1.5.2 (pinned in `pyproject.toml`, easy to change) · 🔌 MCP SDK 2.0.0+
 
 ---
 

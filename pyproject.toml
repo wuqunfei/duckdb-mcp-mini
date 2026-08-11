@@ -36,7 +36,8 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "duckdb>=1.5.5",
+    # DuckDB version — change this pin to target a different release.
+    "duckdb==1.5.2",
     "mcp>=2.0.0",
 ]
 
