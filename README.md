@@ -1,46 +1,88 @@
-# DuckDB MCP Server
+<div align="center">
 
-A minimal, fast [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server for DuckDB with a persistent session.
+# 🦆 DuckDB MCP Server
 
-**Small surface. 2 runtime dependencies. 12 tools. ~10 ms per query.**
+### Give your AI assistant a blazing-fast, persistent SQL engine.
 
-- **Persistent session** — one connection stays open for the process lifetime, so there's no per-query reconnect/subprocess overhead.
-- **Flexible config** — `--db`, `--schema`, `--init-sql`, `--read-only`, plus `${VAR}` environment interpolation.
-- **Read-only mode** — enforced by DuckDB itself for shared/production databases.
+A minimal [**Model Context Protocol**](https://modelcontextprotocol.io) server that plugs [DuckDB](https://duckdb.org) straight into Claude — query CSVs, Parquet, and cloud data in plain language, at in-process speed.
+
+[![CI](https://github.com/wuqunfei/duckdb-mcp-mini/actions/workflows/ci.yml/badge.svg)](https://github.com/wuqunfei/duckdb-mcp-mini/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
+![DuckDB](https://img.shields.io/badge/DuckDB-1.5.5%2B-FFF000?logo=duckdb&logoColor=black)
+![MCP](https://img.shields.io/badge/MCP-2.0-6E56CF)
+![Code style](https://img.shields.io/badge/code%20style-black-000000)
+![License](https://img.shields.io/badge/license-MIT-3DA639)
+
+**⚡ ~10 ms / query · 🪶 2 runtime deps · 🧰 12 tools · 🔒 read-only & secret-safe**
+
+</div>
 
 ---
 
-## Requirements
+## ✨ Why this one?
 
-- **Python** 3.12+
-- **DuckDB** 1.5.5+
-- **MCP SDK** 2.0.0+
+| | |
+|---|---|
+| ⚡ **Fast** | One persistent connection for the whole session — no subprocess spawn, no reconnect. ~10 ms per query. |
+| 🪶 **Tiny** | A focused `src/` package, just **two** runtime dependencies (`duckdb`, `mcp`). No bloat, no magic. |
+| 🧰 **Complete** | 12 tools covering query, write, CSV/Parquet loading, and full catalog/schema/table introspection. |
+| 🔒 **Safe by default** | Engine-enforced `--read-only` mode, plus a `list_environments` tool that **masks every secret** (`****`). |
+| ☁️ **Cloud-ready** | Query `s3://` Parquet directly, with `${VAR}` interpolation to keep credentials out of config files. |
+| ✅ **Trustworthy** | Fully typed, linted, and tested — CI runs black + ruff + mypy + pytest on Python 3.12 & 3.13. |
 
 ---
 
-## Install
+## 🚀 Quick start
 
-```bash
-# From a clone, into the current environment
-pip install .
-
-# For development (editable + dev tools)
-pip install -e ".[dev]"
-```
-
-Or run without installing, straight from Git, using [uv](https://docs.astral.sh/uv/):
+**1. Run it — no install needed** (via [uv](https://docs.astral.sh/uv/)):
 
 ```bash
 uvx --from git+https://github.com/wuqunfei/duckdb-mcp-mini duckdb-mcp --db :memory:
 ```
 
-> This package is **not published to PyPI**. Install from source or run from Git as shown above.
+**2. Point Claude Desktop at it** — add this to `claude_desktop_config.json` and restart Claude:
+
+```json
+{
+  "mcpServers": {
+    "duckdb": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/wuqunfei/duckdb-mcp-mini", "duckdb-mcp", "--db", ":memory:"]
+    }
+  }
+}
+```
+
+**3. Ask away** 💬
+
+> *"Load `~/data/sales.csv` and show me total revenue by region."*
+
+That's it. Tools are available immediately. 🎉
 
 ---
 
-## Run
+## 📦 Install
 
-The installed console script is `duckdb-mcp`. It speaks MCP over **stdio**, so you normally launch it from an MCP client (see below), but you can start it directly too:
+```bash
+pip install .            # from a clone, into the current environment
+pip install -e ".[dev]"  # for development (editable + dev tools)
+```
+
+Or run straight from Git without installing:
+
+```bash
+uvx --from git+https://github.com/wuqunfei/duckdb-mcp-mini duckdb-mcp --db :memory:
+```
+
+> ℹ️ This package is **not published to PyPI** — install from source or run from Git as shown above.
+
+**Requirements:** 🐍 Python 3.12+ · 🦆 DuckDB 1.5.5+ · 🔌 MCP SDK 2.0.0+
+
+---
+
+## 🏃 Run
+
+The installed console script is `duckdb-mcp`. It speaks MCP over **stdio**, so you'll normally launch it from an MCP client — but you can start it directly too:
 
 ```bash
 duckdb-mcp                                             # in-memory, read-write
@@ -61,17 +103,17 @@ uv run duckdb-mcp --db :memory:                        # via uv, no install
 | `--init-sql` | Path to a SQL file executed once on startup |
 | `--read-only` | Open the database read-only (default: read-write) |
 
-### Read-only mode
+### 🔒 Read-only mode
 
-`--read-only` opens the connection via DuckDB's own read-only flag, so writes are blocked at the engine level (not by inspecting SQL):
+`--read-only` opens the connection via DuckDB's own read-only flag, so writes are blocked at the **engine level** (not by inspecting SQL):
 
 - ✅ `SELECT` works normally
-- ❌ `INSERT` / `UPDATE` / `DELETE` / `CREATE` / `DROP` are rejected by DuckDB
-- Useful for shared analytics/reporting databases where accidental writes must be impossible
+- 🚫 `INSERT` / `UPDATE` / `DELETE` / `CREATE` / `DROP` are rejected by DuckDB
+- 💡 Perfect for shared analytics/reporting databases where accidental writes must be impossible
 
 ---
 
-## Configure Claude Desktop
+## 🖥️ Configure Claude Desktop
 
 Add one of the following to your `claude_desktop_config.json`, then restart Claude.
 
@@ -114,19 +156,19 @@ Add one of the following to your `claude_desktop_config.json`, then restart Clau
 }
 ```
 
-### Config file locations
+### 📍 Config file locations
 
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Linux:** `~/.config/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-### Multiple servers
+### 🔁 Multiple servers
 
 Add more entries under `mcpServers` with distinct names (e.g. `duckdb-dev`, `duckdb-prod`), each with its own `--db`/`--schema`.
 
 ---
 
-## Environment variables
+## ☁️ Environment variables & cloud data
 
 Any variables set in the client's `env` block are available to DuckDB during connection (handy for S3/cloud credentials). Values support **`${VAR_NAME}` interpolation**, so you can reference the system environment instead of hardcoding secrets into the config file:
 
@@ -161,35 +203,32 @@ Then query cloud data directly:
 SELECT * FROM read_parquet('s3://my-data-bucket/data.parquet')
 ```
 
-Interpolation happens **before** the DuckDB connection is opened, so credentials are ready in time for connection setup and any `--init-sql`.
+> 🔐 Interpolation happens **before** the DuckDB connection is opened, so credentials are ready in time for connection setup and any `--init-sql`. Use the `list_environments` tool to confirm what's set — values are always masked.
 
 ---
 
-## Tools (12)
+## 🧰 Tools (12)
 
 | Category | Tool | Purpose |
 |----------|------|---------|
-| Core | `query` | Run a `SELECT` and return the result as a text table |
-| Core | `execute` | Run a write statement (`INSERT`/`UPDATE`/`DELETE`/`CREATE`/`DROP`); returns a status message |
-| File I/O | `read_csv` | Load a CSV file into a table (`table_name` defaults to `data`) |
-| File I/O | `read_parquet` | Load a Parquet file into a table (`table_name` defaults to `data`) |
-| Introspection | `list_catalogs` | List catalogs |
-| Introspection | `list_databases` | List databases |
-| Introspection | `list_schemas` | List schemas |
-| Introspection | `list_tables` | List tables in the current schema |
-| Introspection | `list_columns` | Describe a table's columns |
-| Introspection | `list_extensions` | List loaded extensions |
-| Introspection | `list_environments` | List environment variables as `key: value`, with values masked (`****`, or `empty` when unset) |
-| Introspection | `check_version` | Report the DuckDB version |
+| 🔎 Core | `query` | Run a `SELECT` and return the result as a text table |
+| ✍️ Core | `execute` | Run a write statement (`INSERT`/`UPDATE`/`DELETE`/`CREATE`/`DROP`); returns a status message |
+| 📥 File I/O | `read_csv` | Load a CSV file into a table (`table_name` defaults to `data`) |
+| 📥 File I/O | `read_parquet` | Load a Parquet file into a table (`table_name` defaults to `data`) |
+| 📚 Introspection | `list_catalogs` | List catalogs |
+| 📚 Introspection | `list_databases` | List databases |
+| 📚 Introspection | `list_schemas` | List schemas |
+| 📚 Introspection | `list_tables` | List tables in the current schema |
+| 📚 Introspection | `list_columns` | Describe a table's columns |
+| 📚 Introspection | `list_extensions` | List loaded extensions |
+| 🔐 Introspection | `list_environments` | List environment variables as `key: value`, with values masked (`****`, or `empty` when unset) |
+| 🏷️ Introspection | `check_version` | Report the DuckDB version |
 
-### `query` vs `execute`
-
-- **`query`** is for reads — it fetches rows and formats them as a pipe-delimited table.
-- **`execute`** is for writes/DDL — it runs the statement and returns `"Executed successfully"` (no rows to format).
+**`query` vs `execute`** — `query` is for reads (fetches rows, formats a table); `execute` is for writes/DDL (runs the statement, returns `"Executed successfully"`).
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 launch (cli.main)
@@ -202,41 +241,40 @@ DuckDBSession(...)                     # src/duckdb_mcp/session.py
 create_server(session)                 # src/duckdb_mcp/server.py
    └─ registers 12 tools on an mcp MCPServer; each calls dispatch_tool()
    ↓
-server.run_stdio_async()               # serves MCP over stdio until client disconnects
+server.run_stdio_async()               # serves MCP over stdio until the client disconnects
 ```
 
-- `session.py` holds `DuckDBSession` and has **no MCP imports**, so the connection/formatting logic is unit-testable with only `duckdb`.
-- `server.py` holds the pure `dispatch_tool(session, name, args)` function plus the thin MCP tool registrations.
-- `cli.py` parses args, builds the session, and serves.
+- 🧩 `session.py` holds `DuckDBSession` with **no MCP imports**, so the connection/formatting logic is unit-testable with only `duckdb`.
+- 🗂️ `server.py` holds the `_HANDLERS` registry (single source of truth for the tool set) plus `dispatch_tool()` and the thin typed MCP registrations.
+- 🎛️ `cli.py` parses args, builds the session, and serves.
 
-**Notes worth knowing:**
-- If connecting to `--db` (or running `--init-sql`) fails, the session degrades to an in-memory read-write connection rather than crashing.
-- SQL is f-string interpolated (table names, filepaths). This is intentional for a local single-user tool — inputs are **not** sanitized.
+**Good to know:**
+- 🛟 If connecting to `--db` (or running `--init-sql`) fails, the session degrades to an in-memory read-write connection rather than crashing.
+- ⚠️ SQL is f-string interpolated (table names, filepaths). This is intentional for a local single-user tool — inputs are **not** sanitized.
 
 ---
 
-## Development
+## 🛠️ Development
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"      # or: uv sync --extra dev
 
-black --check src tests   # format (drop --check to apply)
-ruff check src tests      # lint
-mypy src                  # type check
-pytest                    # tests
+black --check src tests      # format (drop --check to apply)
+ruff check src tests         # lint
+mypy src                     # type check
+pytest                       # tests
 
-# run a single test
-pytest tests/test_server.py::test_dispatch_query
+pytest tests/test_server.py::test_dispatch_query   # run a single test
 ```
 
-### Project layout
+### 📁 Project layout
 
 ```
 duckdb-mcp-mini/
 ├── src/duckdb_mcp/
 │   ├── __init__.py        # package version + DuckDBSession export
 │   ├── session.py         # persistent DuckDB session (no MCP deps)
-│   ├── server.py          # tool dispatch + MCP server wiring
+│   ├── server.py          # tool registry + dispatch + MCP server wiring
 │   └── cli.py             # argument parsing + entrypoint
 ├── tests/                 # pytest suite
 ├── .github/workflows/
@@ -247,17 +285,19 @@ duckdb-mcp-mini/
 └── README.md
 ```
 
-### CI / CD
+### 🔄 CI / CD
 
 - **CI** (`.github/workflows/ci.yml`) runs black, ruff, mypy, and pytest on Python 3.12 and 3.13 for every push/PR to `main`, and checks that `duckdb-mcp --help` works.
 - **CD** (`.github/workflows/release.yml`) builds the sdist/wheel on a `v*` tag and attaches them to the GitHub Release. **PyPI publishing is intentionally disabled** — the `publish-pypi` job is gated behind `if: false`; see the comments in that file to enable it later.
 
-### Contributing
+### 🤝 Contributing
 
-Issues and PRs are welcome. Please keep the footprint small (the minimalism is a feature), and make sure `black`/`ruff`/`mypy`/`pytest` all pass before opening a PR.
+Issues and PRs are welcome! Please keep the footprint small (the minimalism is a feature 🪶), and make sure `black` / `ruff` / `mypy` / `pytest` all pass before opening a PR.
 
 ---
 
-## License
+<div align="center">
 
-MIT — see [LICENSE](./LICENSE).
+Built with 🦆 + 🔌 · Licensed under [MIT](./LICENSE)
+
+</div>
