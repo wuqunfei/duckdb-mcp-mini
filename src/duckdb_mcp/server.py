@@ -11,7 +11,7 @@ from mcp.server import MCPServer
 
 from duckdb_mcp.session import DuckDBSession
 
-SERVER_NAME = "duckdb-mcp-minimal"
+SERVER_NAME = "duckdb-mcp-mini"
 
 # Every tool the server exposes. Keep in sync with the registrations in
 # ``create_server`` and the branches in ``dispatch_tool``.
