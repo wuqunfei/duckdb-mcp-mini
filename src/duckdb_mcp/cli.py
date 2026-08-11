@@ -18,8 +18,7 @@ Examples:
   duckdb-mcp --db :memory: --schema main
   duckdb-mcp --db analytics.duckdb --init-sql init.sql --read-only
   duckdb-mcp --allow-unsigned-extensions              # or: ALLOW_UNSIGNED_EXTENSIONS=true
-  duckdb-mcp --transport sse --host 0.0.0.0 --port 8000    # HTTP + SSE
-  duckdb-mcp --transport http --port 8000                  # streamable HTTP
+  duckdb-mcp --transport http --host 0.0.0.0 --port 8000   # streamable HTTP
 """
 
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -58,21 +57,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--transport",
-        choices=["stdio", "sse", "http"],
+        choices=["stdio", "http"],
         default="stdio",
-        help="Transport: stdio (default), sse (HTTP+SSE), or http (streamable HTTP)",
+        help="Transport: stdio (default) or http (streamable HTTP)",
     )
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host for sse/http transports (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="Bind port for sse/http transports (default: 8000)")
+    parser.add_argument("--host", default="127.0.0.1", help="Bind host for the http transport (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8000, help="Bind port for the http transport (default: 8000)")
     return parser.parse_args(argv)
 
 
 async def _serve(session: DuckDBSession, transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000) -> None:
     """Serve the MCP protocol over the chosen transport until the client disconnects."""
     server = create_server(session, version=__version__)
-    if transport == "sse":
-        await server.run_sse_async(host=host, port=port)
-    elif transport == "http":
+    if transport == "http":
         await server.run_streamable_http_async(host=host, port=port)
     else:
         await server.run_stdio_async()

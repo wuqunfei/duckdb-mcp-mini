@@ -41,12 +41,13 @@ def test_parse_args_flags() -> None:
 
 
 def test_parse_args_transport() -> None:
-    args = parse_args(["--transport", "sse", "--host", "0.0.0.0", "--port", "9001"])
-    assert args.transport == "sse"
+    args = parse_args(["--transport", "http", "--host", "0.0.0.0", "--port", "9001"])
+    assert args.transport == "http"
     assert args.host == "0.0.0.0"
     assert args.port == 9001
 
 
-def test_parse_args_rejects_unknown_transport() -> None:
+@pytest.mark.parametrize("transport", ["sse", "grpc"])
+def test_parse_args_rejects_unknown_transport(transport: str) -> None:
     with pytest.raises(SystemExit):
-        parse_args(["--transport", "grpc"])
+        parse_args(["--transport", transport])

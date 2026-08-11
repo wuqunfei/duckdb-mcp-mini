@@ -29,7 +29,7 @@ A minimal [**Model Context Protocol**](https://modelcontextprotocol.io) server t
 | 🔒 **Safe by default** | Engine-enforced `--read-only` mode, plus a `list_environments` tool that **masks every secret** (`****`). |
 | ☁️ **Cloud-ready** | Query `s3://` Parquet directly, with `${VAR}` interpolation to keep credentials out of config files. |
 | 🧩 **Extensible** | Opt-in unsigned/community extensions (e.g. TA-Lib) via a single flag or env var. |
-| 🔌 **Any transport** | Run over **stdio** (Claude Desktop), **HTTP + SSE**, or **streamable HTTP** — one `--transport` flag. |
+| 🔌 **Local or remote** | Run over **stdio** (Claude Desktop) or **streamable HTTP** — one `--transport` flag. |
 | ✅ **Trustworthy** | Fully typed, linted, and tested — CI runs black + ruff + mypy + pytest on Python 3.12 & 3.13. |
 
 ---
@@ -105,9 +105,9 @@ uv run duckdb-mcp --db :memory:                        # via uv, no install
 | `--init-sql` | Path to a SQL file executed once on startup |
 | `--read-only` | Open the database read-only (default: read-write) |
 | `--allow-unsigned-extensions` | Allow unsigned/community extensions (default: off; env: `ALLOW_UNSIGNED_EXTENSIONS`) |
-| `--transport` | `stdio` (default), `sse` (HTTP + SSE), or `http` (streamable HTTP) |
-| `--host` | Bind host for `sse`/`http` (default: `127.0.0.1`) |
-| `--port` | Bind port for `sse`/`http` (default: `8000`) |
+| `--transport` | `stdio` (default) or `http` (streamable HTTP) |
+| `--host` | Bind host for the `http` transport (default: `127.0.0.1`) |
+| `--port` | Bind port for the `http` transport (default: `8000`) |
 
 ### 🔒 Read-only mode
 
@@ -121,35 +121,29 @@ uv run duckdb-mcp --db :memory:                        # via uv, no install
 
 ## 🔌 Transports
 
-The server speaks three MCP transports — pick with `--transport`:
+The server speaks two MCP transports — pick with `--transport`:
 
 | Transport | Flag | Use it for |
 |-----------|------|-----------|
 | **stdio** (default) | `--transport stdio` | Local clients that launch the process, e.g. Claude Desktop |
-| **SSE** | `--transport sse` | Remote / networked clients over HTTP + Server-Sent Events |
-| **streamable HTTP** | `--transport http` | The modern HTTP transport (single `/mcp` endpoint) |
+| **streamable HTTP** | `--transport http` | Remote / networked clients — the current MCP HTTP transport (single `/mcp` endpoint) |
 
 ```bash
 # stdio (default) — the process talks over stdin/stdout
 duckdb-mcp --db analytics.duckdb
 
-# HTTP + SSE — serve on a network address
-duckdb-mcp --transport sse --host 0.0.0.0 --port 8000 --db analytics.duckdb
-#   → SSE stream:    http://<host>:8000/sse
-#   → message POST:  http://<host>:8000/messages/
-
-# Streamable HTTP — single endpoint
+# streamable HTTP — serve on a network address, single endpoint
 duckdb-mcp --transport http --host 0.0.0.0 --port 8000 --db analytics.duckdb
-#   → endpoint:      http://<host>:8000/mcp
+#   → endpoint:  http://<host>:8000/mcp
 ```
 
-Point a network MCP client at the SSE endpoint:
+Point a network MCP client at the `/mcp` endpoint:
 
 ```json
 {
   "mcpServers": {
     "duckdb": {
-      "url": "http://127.0.0.1:8000/sse"
+      "url": "http://127.0.0.1:8000/mcp"
     }
   }
 }
@@ -322,7 +316,7 @@ create_server(session)                 # src/duckdb_mcp/server.py
    └─ registers 12 tools on an mcp MCPServer; each calls dispatch_tool()
    ↓
 _serve(session, transport=...)         # src/duckdb_mcp/cli.py
-   └─ run_stdio_async() | run_sse_async() | run_streamable_http_async()
+   └─ run_stdio_async() | run_streamable_http_async()
 ```
 
 - 🧩 `session.py` holds `DuckDBSession` with **no MCP imports**, so the connection/formatting logic is unit-testable with only `duckdb`.
