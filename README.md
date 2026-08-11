@@ -109,6 +109,15 @@ uv run duckdb-mcp --db :memory:                        # via uv, no install
 | `--transport` | `stdio` (default) or `http` (streamable HTTP) |
 | `--host` | Bind host for the `http` transport (default: `127.0.0.1`) |
 | `--port` | Bind port for the `http` transport (default: `8000`) |
+| `--log-level` | Log level to stderr: `DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL` (default: `WARNING`; env: `LOG_LEVEL`). `DEBUG` logs every tool request |
+
+> 🐛 **Debugging:** run with `--log-level DEBUG` (or `LOG_LEVEL=DEBUG`) to log every incoming tool request — name and arguments — to **stderr**, so you can see exactly what a client sends:
+>
+> ```
+> DEBUG duckdb_mcp: tool request: query args={'sql': 'SELECT 42 AS answer'}
+> ```
+>
+> Logs always go to stderr (never stdout, which is the protocol channel in stdio mode).
 
 ### 🔒 Read-only mode
 
@@ -185,6 +194,7 @@ uvx --from git+https://github.com/wuqunfei/duckdb-mcp-mini duckdb-mcp \
 | `MCP_AUTH_TOKEN` | env | Require `Authorization: Bearer <token>` (env-only, no flag) |
 | `ALLOW_UNSIGNED_EXTENSIONS` | env | Community extensions (or the `--allow-unsigned-extensions` flag) |
 | `AWS_*`, any `${VAR}` | env | Cloud credentials for `s3://` reads (see the **Environment variables & cloud data** section) |
+| `--log-level` / `LOG_LEVEL` | both | `DEBUG` logs every tool request to stderr |
 
 **Verify it's up** (with `MCP_AUTH_TOKEN` set, a missing/wrong token returns `401`):
 

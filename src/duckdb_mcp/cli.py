@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
 
@@ -11,6 +12,20 @@ from duckdb_mcp import __version__
 from duckdb_mcp.auth import TOKEN_ENV
 from duckdb_mcp.server import create_server
 from duckdb_mcp.session import DuckDBSession
+
+_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+
+def configure_logging(level_name: str | None) -> None:
+    """Configure root logging to stderr. Precedence: flag, then LOG_LEVEL env, then WARNING.
+
+    Logs go to stderr, never stdout — stdout is the MCP protocol channel in
+    stdio mode. Use DEBUG to log every incoming tool request.
+    """
+    name = (level_name or os.environ.get("LOG_LEVEL") or "WARNING").upper()
+    level = getattr(logging, name, logging.WARNING)
+    logging.basicConfig(level=level, stream=sys.stderr, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
 
 _EPILOG = """\
 Examples:
@@ -64,6 +79,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--host", default="127.0.0.1", help="Bind host for the http transport (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8000, help="Bind port for the http transport (default: 8000)")
+    parser.add_argument(
+        "--log-level",
+        choices=_LOG_LEVELS,
+        default=None,
+        help="Logging level to stderr (default: WARNING; env: LOG_LEVEL). DEBUG logs every tool request.",
+    )
     return parser.parse_args(argv)
 
 
@@ -79,6 +100,7 @@ async def _serve(session: DuckDBSession, transport: str = "stdio", host: str = "
 def main(argv: list[str] | None = None) -> int:
     """Console-script entrypoint: parse args, open the session, serve."""
     args = parse_args(argv)
+    configure_logging(args.log_level)
     session: DuckDBSession | None = None
     try:
         # Enabled by either the CLI flag or the ALLOW_UNSIGNED_EXTENSIONS env var.

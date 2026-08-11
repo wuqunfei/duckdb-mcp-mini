@@ -8,6 +8,7 @@ input schema for every tool.
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Callable
 
@@ -17,6 +18,8 @@ from duckdb_mcp.auth import StaticTokenVerifier, build_auth_settings
 from duckdb_mcp.session import DuckDBSession
 
 SERVER_NAME = "duckdb-mcp-mini"
+
+logger = logging.getLogger("duckdb_mcp")
 
 #: A tool handler: given the session and the call arguments, return text output.
 Handler = Callable[[DuckDBSession, dict], str]
@@ -76,6 +79,7 @@ TOOL_NAMES: list[str] = list(_HANDLERS)
 
 def dispatch_tool(session: DuckDBSession, name: str, arguments: dict) -> str:
     """Execute the named tool against ``session`` and return its text result."""
+    logger.debug("tool request: %s args=%r", name, arguments)
     handler = _HANDLERS.get(name)
     if handler is None:
         return f"Unknown tool: {name}"

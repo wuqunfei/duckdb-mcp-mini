@@ -53,6 +53,15 @@ def test_dispatch_unknown_tool(session: DuckDBSession) -> None:
     assert dispatch_tool(session, "nope", {}).startswith("Unknown tool")
 
 
+def test_dispatch_logs_request_at_debug(session: DuckDBSession, caplog: pytest.LogCaptureFixture) -> None:
+    import logging
+
+    with caplog.at_level(logging.DEBUG, logger="duckdb_mcp"):
+        dispatch_tool(session, "query", {"sql": "SELECT 1"})
+    assert "tool request: query" in caplog.text
+    assert "SELECT 1" in caplog.text
+
+
 def test_read_csv_loads_table(session: DuckDBSession, tmp_path) -> None:
     csv = tmp_path / "data.csv"
     csv.write_text("id,name\n1,alice\n2,bob\n")

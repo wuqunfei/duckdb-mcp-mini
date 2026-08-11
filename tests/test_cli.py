@@ -51,3 +51,16 @@ def test_parse_args_transport() -> None:
 def test_parse_args_rejects_unknown_transport(transport: str) -> None:
     with pytest.raises(SystemExit):
         parse_args(["--transport", transport])
+
+
+def test_parse_args_log_level_default_none() -> None:
+    assert parse_args([]).log_level is None
+
+
+def test_parse_args_log_level() -> None:
+    assert parse_args(["--log-level", "DEBUG"]).log_level == "DEBUG"
+
+
+def test_parse_args_rejects_bad_log_level() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["--log-level", "TRACE"])
