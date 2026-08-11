@@ -13,11 +13,13 @@ from duckdb_mcp.session import DuckDBSession
 
 _EPILOG = """\
 Examples:
-  duckdb-mcp
+  duckdb-mcp                                          # stdio (default)
   duckdb-mcp --db /path/to/db.duckdb
   duckdb-mcp --db :memory: --schema main
   duckdb-mcp --db analytics.duckdb --init-sql init.sql --read-only
-  duckdb-mcp --allow-unsigned-extensions      # or: ALLOW_UNSIGNED_EXTENSIONS=true
+  duckdb-mcp --allow-unsigned-extensions              # or: ALLOW_UNSIGNED_EXTENSIONS=true
+  duckdb-mcp --transport sse --host 0.0.0.0 --port 8000    # HTTP + SSE
+  duckdb-mcp --transport http --port 8000                  # streamable HTTP
 """
 
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -54,13 +56,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=False,
         help="Allow loading unsigned/community DuckDB extensions (default: false; env: ALLOW_UNSIGNED_EXTENSIONS)",
     )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "http"],
+        default="stdio",
+        help="Transport: stdio (default), sse (HTTP+SSE), or http (streamable HTTP)",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Bind host for sse/http transports (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8000, help="Bind port for sse/http transports (default: 8000)")
     return parser.parse_args(argv)
 
 
-async def _serve(session: DuckDBSession) -> None:
-    """Serve the MCP protocol over stdio until the client disconnects."""
+async def _serve(session: DuckDBSession, transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000) -> None:
+    """Serve the MCP protocol over the chosen transport until the client disconnects."""
     server = create_server(session, version=__version__)
-    await server.run_stdio_async()
+    if transport == "sse":
+        await server.run_sse_async(host=host, port=port)
+    elif transport == "http":
+        await server.run_streamable_http_async(host=host, port=port)
+    else:
+        await server.run_stdio_async()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -77,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
             read_only=args.read_only,
             allow_unsigned_extensions=allow_unsigned,
         )
-        asyncio.run(_serve(session))
+        asyncio.run(_serve(session, transport=args.transport, host=args.host, port=args.port))
         return 0
     except KeyboardInterrupt:
         return 0

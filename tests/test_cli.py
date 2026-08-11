@@ -29,9 +29,24 @@ def test_parse_args_defaults() -> None:
     args = parse_args([])
     assert args.read_only is False
     assert args.allow_unsigned_extensions is False
+    assert args.transport == "stdio"
+    assert args.host == "127.0.0.1"
+    assert args.port == 8000
 
 
 def test_parse_args_flags() -> None:
     args = parse_args(["--read-only", "--allow-unsigned-extensions"])
     assert args.read_only is True
     assert args.allow_unsigned_extensions is True
+
+
+def test_parse_args_transport() -> None:
+    args = parse_args(["--transport", "sse", "--host", "0.0.0.0", "--port", "9001"])
+    assert args.transport == "sse"
+    assert args.host == "0.0.0.0"
+    assert args.port == 9001
+
+
+def test_parse_args_rejects_unknown_transport() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["--transport", "grpc"])
