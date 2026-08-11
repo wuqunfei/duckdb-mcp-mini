@@ -132,36 +132,74 @@ The server speaks two MCP transports — pick with `--transport`:
 ```bash
 # stdio (default) — the process talks over stdin/stdout
 duckdb-mcp --db analytics.duckdb
-
-# streamable HTTP — serve on a network address, single endpoint
-duckdb-mcp --transport http --host 0.0.0.0 --port 8000 --db analytics.duckdb
-#   → endpoint:  http://<host>:8000/mcp
 ```
 
-Point a network MCP client at the `/mcp` endpoint:
+---
 
-```json
-{
-  "mcpServers": {
-    "duckdb": {
-      "url": "http://127.0.0.1:8000/mcp"
-    }
-  }
-}
-```
+## 🌐 Run an HTTP server
 
-> 🔒 `--host` defaults to `127.0.0.1` (localhost only). Bind to `0.0.0.0` only on a trusted network, and protect it with a bearer token (below).
-
-### 🔑 Bearer token (HTTP transport)
-
-Set the `MCP_AUTH_TOKEN` environment variable to require an `Authorization: Bearer <token>` header on every `http` request. Requests with a missing or wrong token get **401**.
+Configuration splits cleanly in two: **args** set the database and network binding, **environment variables** carry secrets and toggles (so they stay out of `ps` and shell history).
 
 ```bash
-export MCP_AUTH_TOKEN="a-long-random-secret"
-duckdb-mcp --transport http --host 0.0.0.0 --port 8000 --db analytics.duckdb
+# 1) Environment — secrets & toggles
+export MCP_AUTH_TOKEN="a-long-random-secret"     # require Bearer auth (recommended)
+export ALLOW_UNSIGNED_EXTENSIONS=true            # optional: allow community extensions
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"  # optional: for s3:// queries
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+
+# 2) Args — database + network binding
+duckdb-mcp \
+  --transport http \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --db /data/analytics.duckdb \
+  --read-only
+
+# → serving at  http://0.0.0.0:8000/mcp
 ```
 
-Client config:
+No install? Run the same thing straight from Git:
+
+```bash
+MCP_AUTH_TOKEN="a-long-random-secret" \
+uvx --from git+https://github.com/wuqunfei/duckdb-mcp-mini duckdb-mcp \
+  --transport http --host 0.0.0.0 --port 8000 --db :memory:
+```
+
+| Setting | Kind | Notes |
+|---------|------|-------|
+| `--transport http` | arg | Required to serve over HTTP |
+| `--host` / `--port` | arg | Bind address (default `127.0.0.1:8000`) |
+| `--db` / `--schema` / `--init-sql` / `--read-only` | arg | Same as stdio mode |
+| `MCP_AUTH_TOKEN` | env | Require `Authorization: Bearer <token>` (env-only, no flag) |
+| `ALLOW_UNSIGNED_EXTENSIONS` | env | Community extensions (or the `--allow-unsigned-extensions` flag) |
+| `AWS_*`, any `${VAR}` | env | Cloud credentials for `s3://` reads (see the **Environment variables & cloud data** section) |
+
+**Verify it's up** (with `MCP_AUTH_TOKEN` set, a missing/wrong token returns `401`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -X POST http://127.0.0.1:8000/mcp \
+  -H 'Authorization: Bearer a-long-random-secret' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+# 401 = missing/invalid token   ·   400 = reached the server (a real client does the full MCP handshake)
+```
+
+### 🔑 Bearer token
+
+Setting `MCP_AUTH_TOKEN` turns on auth for the HTTP transport:
+
+- 🌱 **Environment only** — read from `MCP_AUTH_TOKEN`, never a CLI flag, so it stays out of `ps` and shell history.
+- 🔌 **HTTP only** — ignored for `stdio` (the client owns the process); setting it there prints a warning.
+- ⚠️ **Access control, not identity** — every caller with the token gets full database access. Pair it with `--read-only` and network controls; it is *not* per-user auth.
+
+> 🔒 `--host` defaults to `127.0.0.1` (localhost only). Bind to `0.0.0.0` only on a trusted network, and always with `MCP_AUTH_TOKEN` set.
+
+### 🔗 Connect a client
+
+**MCP client config** (Claude Desktop or any client that supports an HTTP URL) — omit `headers` if you didn't set a token:
 
 ```json
 {
@@ -174,9 +212,30 @@ Client config:
 }
 ```
 
-- 🌱 **Environment only** — the token is read from `MCP_AUTH_TOKEN`, never a CLI flag, so it stays out of `ps` and shell history.
-- 🔌 **HTTP only** — the token is ignored for `stdio` (the client owns the process); setting it there prints a warning.
-- ⚠️ **Access control, not identity** — every caller with the token gets full database access. It is *not* a substitute for network controls or `--read-only`; pair them.
+**From Python** (the `mcp` client libraries ship `httpx2`):
+
+```python
+import asyncio
+import httpx2
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
+
+URL = "http://127.0.0.1:8000/mcp"
+HEADERS = {"Authorization": "Bearer a-long-random-secret"}  # omit if no MCP_AUTH_TOKEN
+
+async def main():
+    async with httpx2.AsyncClient(headers=HEADERS) as http:
+        async with streamable_http_client(URL, http_client=http) as streams:
+            read, write = streams[0], streams[1]
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                tools = await session.list_tools()
+                print("tools:", [t.name for t in tools.tools])
+                result = await session.call_tool("query", {"sql": "SELECT 42 AS answer"})
+                print(result.content[0].text)
+
+asyncio.run(main())
+```
 
 ---
 
