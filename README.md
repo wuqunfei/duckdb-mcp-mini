@@ -48,7 +48,7 @@ duckdb-mcp --db /path/to/analytics.duckdb --schema main
 duckdb-mcp --db analytics.duckdb --init-sql init.sql
 duckdb-mcp --db analytics.duckdb --read-only
 
-python -m duckdb_mcp --db :memory:                     # module form
+python -m duckdb_mcp.cli --db :memory:                 # module form
 uv run duckdb-mcp --db :memory:                        # via uv, no install
 ```
 
@@ -236,8 +236,7 @@ duckdb-mcp-mini/
 │   ├── __init__.py        # package version + DuckDBSession export
 │   ├── session.py         # persistent DuckDB session (no MCP deps)
 │   ├── server.py          # tool dispatch + MCP server wiring
-│   ├── cli.py             # argument parsing + entrypoint
-│   └── __main__.py        # `python -m duckdb_mcp`
+│   └── cli.py             # argument parsing + entrypoint
 ├── tests/                 # pytest suite
 ├── .github/workflows/
 │   ├── ci.yml             # lint + type + test on py3.12 / py3.13
