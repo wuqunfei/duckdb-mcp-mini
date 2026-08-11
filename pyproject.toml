@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "duckdb-mcp"
+version = "0.1.0"
+description = "DuckDB MCP Server - persistent session with environment variable support, read-only/write mode, and flexible configuration"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Qunfei Wu", email = "wu.qunfei@gmail.com" }
+]
+keywords = [
+    "duckdb",
+    "mcp",
+    "model-context-protocol",
+    "database",
+    "sql",
+    "analytics",
+    "persistent-session",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.5.5",
+    "mcp>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=22.0",
+    "ruff>=0.0.250",
+    "mypy>=0.990",
+]
+
+[project.urls]
+Homepage = "https://github.com/wuqunfei/duckdb-mcp-mini"
+Documentation = "https://github.com/wuqunfei/duckdb-mcp-mini#readme"
+Repository = "https://github.com/wuqunfei/duckdb-mcp-mini.git"
+Issues = "https://github.com/wuqunfei/duckdb-mcp-mini/issues"
+
+[project.scripts]
+duckdb-mcp = "duckdb_mcp.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/duckdb_mcp"]
+
+[tool.black]
+line-length = 200
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 200
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # Pyflakes
+    "I", # isort
+    "B", # flake8-bugbear
+    "C4", # flake8-comprehensions
+]
+ignore = [
+    "E501", # line-too-long (black/line-length handles wrapping)
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

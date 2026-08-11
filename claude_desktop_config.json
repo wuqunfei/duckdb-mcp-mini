@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "duckdb": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/wuqunfei/duckdb-mcp-mini",
+        "duckdb-mcp",
+        "--db",
+        ":memory:"
+      ],
+      "env": {}
+    }
+  }
+}

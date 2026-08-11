@@ -1,0 +1,59 @@
+name: Release
+
+# Builds distribution artifacts on a version tag (e.g. v0.1.0).
+# NOTE: Publishing to PyPI is intentionally DISABLED. The `publish-pypi` job
+# below is gated with `if: false`. To enable it later:
+#   1. Create a PyPI Trusted Publisher for this repo, or add a PYPI_API_TOKEN secret.
+#   2. Change `if: false` to `if: ${{ github.repository == 'wuqunfei/duckdb-mcp-mini' }}`.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Attach artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    # DISABLED: flip to a real condition (see header) to start publishing to PyPI.
+    if: false
+    environment: pypi
+    permissions:
+      id-token: write # for PyPI Trusted Publishing (OIDC)
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

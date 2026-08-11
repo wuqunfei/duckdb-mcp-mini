@@ -1,0 +1,18 @@
+# Editors / envs
+.idea
+.venv
+CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# DuckDB local data
+*.duckdb
+*.duckdb.wal
