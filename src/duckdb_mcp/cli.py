@@ -5,22 +5,27 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from typing import Optional
 
 from duckdb_mcp import __version__
 from duckdb_mcp.server import create_server
 from duckdb_mcp.session import DuckDBSession
 
+_EPILOG = """\
+Examples:
+  duckdb-mcp
+  duckdb-mcp --db /path/to/db.duckdb
+  duckdb-mcp --db :memory: --schema main
+  duckdb-mcp --db analytics.duckdb --init-sql init.sql --read-only
+"""
 
-def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         prog="duckdb-mcp",
         description="DuckDB MCP Server - persistent session",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=(
-            "Examples:\n" "  duckdb-mcp\n" "  duckdb-mcp --db /path/to/db.duckdb\n" "  duckdb-mcp --db :memory: --schema main\n" "  duckdb-mcp --db analytics.duckdb --init-sql init.sql --read-only\n"
-        ),
+        epilog=_EPILOG,
     )
     parser.add_argument("--db", "--database", dest="database", help="Default database path")
     parser.add_argument("--schema", help="Default schema (default: main)")
@@ -40,10 +45,10 @@ async def _serve(session: DuckDBSession) -> None:
     await server.run_stdio_async()
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Console-script entrypoint: parse args, open the session, serve."""
     args = parse_args(argv)
-    session: Optional[DuckDBSession] = None
+    session: DuckDBSession | None = None
     try:
         session = DuckDBSession(
             db_path=args.database,

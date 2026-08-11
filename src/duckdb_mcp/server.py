@@ -1,13 +1,15 @@
 """MCP server wiring.
 
-The query logic lives in :func:`dispatch_tool` (pure, easily unit tested); the
-MCP-facing layer is a set of thin decorated tool functions registered on an
-:class:`~mcp.server.MCPServer`.
+Tool logic lives in small handlers collected in ``_HANDLERS`` — pure and
+unit-testable through :func:`dispatch_tool`. ``create_server`` then exposes each
+handler as an MCP tool with a typed signature, so the client receives a proper
+input schema for every tool.
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 
 from mcp.server import MCPServer
 
@@ -15,22 +17,8 @@ from duckdb_mcp.session import DuckDBSession
 
 SERVER_NAME = "duckdb-mcp-mini"
 
-# Every tool the server exposes. Keep in sync with the registrations in
-# ``create_server`` and the branches in ``dispatch_tool``.
-TOOL_NAMES: list[str] = [
-    "query",
-    "execute",
-    "read_csv",
-    "read_parquet",
-    "list_catalogs",
-    "list_databases",
-    "list_schemas",
-    "list_tables",
-    "list_columns",
-    "list_extensions",
-    "list_environments",
-    "check_version",
-]
+#: A tool handler: given the session and the call arguments, return text output.
+Handler = Callable[[DuckDBSession, dict], str]
 
 
 def mask_environment() -> str:
@@ -41,75 +29,70 @@ def mask_environment() -> str:
     """
     if not os.environ:
         return "No environment variables set"
-    lines = []
-    for key in sorted(os.environ):
-        value = os.environ[key]
-        lines.append(f"{key}: {'****' if value else 'empty'}")
-    return "\n".join(lines)
+    return "\n".join(f"{key}: {'****' if os.environ[key] else 'empty'}" for key in sorted(os.environ))
+
+
+def _execute(session: DuckDBSession, args: dict) -> str:
+    """Run a write/DDL statement and return a status message (no result rows)."""
+    try:
+        assert session.conn is not None
+        session.conn.execute(args["sql"])
+        return "Executed successfully"
+    except Exception as exc:  # noqa: BLE001 - surface as text, never crash
+        return f"Error: {exc}"
+
+
+def _load_file(session: DuckDBSession, reader: str, label: str, args: dict) -> str:
+    """Load a file into a table using the given DuckDB reader function."""
+    table = args.get("table_name", "data")
+    sql = f"CREATE TABLE IF NOT EXISTS {table} AS SELECT * FROM {reader}('{args['filepath']}')"
+    return f"Loaded {label} to '{table}'\n{session.execute(sql)}"
+
+
+def _list_tables(session: DuckDBSession, _args: dict) -> str:
+    return session.execute(f"SELECT table_name, table_schema FROM information_schema.tables WHERE table_schema = '{session.default_schema}'")
+
+
+#: Single source of truth for the tool set: name -> handler.
+_HANDLERS: dict[str, Handler] = {
+    "query": lambda session, args: session.execute(args["sql"]),
+    "execute": _execute,
+    "read_csv": lambda session, args: _load_file(session, "read_csv_auto", "CSV", args),
+    "read_parquet": lambda session, args: _load_file(session, "read_parquet", "Parquet", args),
+    "list_catalogs": lambda session, _a: session.execute("SELECT * FROM information_schema.catalogs"),
+    "list_databases": lambda session, _a: session.execute("SELECT * FROM information_schema.databases"),
+    "list_schemas": lambda session, _a: session.execute("SELECT * FROM information_schema.schemata"),
+    "list_tables": _list_tables,
+    "list_columns": lambda session, args: session.execute(f"DESCRIBE {args['table_name']}"),
+    "list_extensions": lambda session, _a: session.execute("SELECT extension_name FROM duckdb_extensions() WHERE loaded"),
+    "list_environments": lambda _session, _a: mask_environment(),
+    "check_version": lambda session, _a: session.execute("SELECT version()"),
+}
+
+#: Canonical tool inventory, derived from the handler registry.
+TOOL_NAMES: list[str] = list(_HANDLERS)
 
 
 def dispatch_tool(session: DuckDBSession, name: str, arguments: dict) -> str:
     """Execute the named tool against ``session`` and return its text result."""
-    if name == "query":
-        return session.execute(arguments["sql"])
-
-    if name == "execute":
-        try:
-            assert session.conn is not None
-            session.conn.execute(arguments["sql"])
-            return "Executed successfully"
-        except Exception as exc:  # noqa: BLE001
-            return f"Error: {exc}"
-
-    if name == "read_csv":
-        table_name = arguments.get("table_name", "data")
-        sql = f"CREATE TABLE IF NOT EXISTS {table_name} AS SELECT * FROM read_csv_auto('{arguments['filepath']}')"
-        return f"Loaded CSV to '{table_name}'\n{session.execute(sql)}"
-
-    if name == "read_parquet":
-        table_name = arguments.get("table_name", "data")
-        sql = f"CREATE TABLE IF NOT EXISTS {table_name} AS SELECT * FROM read_parquet('{arguments['filepath']}')"
-        return f"Loaded Parquet to '{table_name}'\n{session.execute(sql)}"
-
-    if name == "list_catalogs":
-        return session.execute("SELECT * FROM information_schema.catalogs")
-
-    if name == "list_databases":
-        return session.execute("SELECT * FROM information_schema.databases")
-
-    if name == "list_schemas":
-        return session.execute("SELECT * FROM information_schema.schemata")
-
-    if name == "list_tables":
-        return session.execute("SELECT table_name, table_schema FROM information_schema.tables " f"WHERE table_schema = '{session.default_schema}'")
-
-    if name == "list_columns":
-        return session.execute(f"DESCRIBE {arguments['table_name']}")
-
-    if name == "list_extensions":
-        return session.execute("SELECT extension_name FROM duckdb_extensions() WHERE loaded")
-
-    if name == "list_environments":
-        return mask_environment()
-
-    if name == "check_version":
-        return session.execute("SELECT version()")
-
-    return f"Unknown tool: {name}"
+    handler = _HANDLERS.get(name)
+    if handler is None:
+        return f"Unknown tool: {name}"
+    return handler(session, arguments)
 
 
 def create_server(session: DuckDBSession, version: str = "") -> MCPServer:
-    """Build the :class:`MCPServer` with every tool bound to ``session``."""
+    """Build the :class:`MCPServer`, exposing every handler as a typed MCP tool."""
     server: MCPServer = MCPServer(SERVER_NAME, version=version)
 
     @server.tool()
     def query(sql: str) -> str:
-        """Execute SQL SELECT query and return results."""
+        """Execute a SQL SELECT query and return the results."""
         return dispatch_tool(session, "query", {"sql": sql})
 
     @server.tool()
     def execute(sql: str) -> str:
-        """Execute SQL statement (INSERT, UPDATE, DELETE, CREATE, ...) without returning results."""
+        """Execute a SQL statement (INSERT, UPDATE, DELETE, CREATE, ...) without returning rows."""
         return dispatch_tool(session, "execute", {"sql": sql})
 
     @server.tool()

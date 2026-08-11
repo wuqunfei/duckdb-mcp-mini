@@ -10,7 +10,6 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 import duckdb
 
@@ -28,12 +27,12 @@ class DuckDBSession:
 
     def __init__(
         self,
-        db_path: Optional[str] = None,
-        schema: Optional[str] = None,
-        init_sql: Optional[str] = None,
+        db_path: str | None = None,
+        schema: str | None = None,
+        init_sql: str | None = None,
         read_only: bool = False,
     ) -> None:
-        self.conn: Optional[duckdb.DuckDBPyConnection] = None
+        self.conn: duckdb.DuckDBPyConnection | None = None
         self.default_database = db_path or ":memory:"
         self.default_schema = schema or "main"
         self.init_sql_file = init_sql
