@@ -7,7 +7,7 @@
 A minimal [**Model Context Protocol**](https://modelcontextprotocol.io) server that plugs [DuckDB](https://duckdb.org) straight into Claude — query CSVs, Parquet, and cloud data in plain language, at in-process speed.
 
 [![CI](https://github.com/wuqunfei/duckdb-mcp-mini/actions/workflows/ci.yml/badge.svg)](https://github.com/wuqunfei/duckdb-mcp-mini/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?logo=python&logoColor=white)
 ![DuckDB](https://img.shields.io/badge/DuckDB-1.5.5%2B-FFF000?logo=duckdb&logoColor=black)
 ![MCP](https://img.shields.io/badge/MCP-2.0-6E56CF)
 ![Code style](https://img.shields.io/badge/code%20style-black-000000)
@@ -77,7 +77,7 @@ uvx --from git+https://github.com/wuqunfei/duckdb-mcp-mini duckdb-mcp --db :memo
 
 > ℹ️ This package is **not published to PyPI** — install from source or run from Git as shown above.
 
-**Requirements:** 🐍 Python 3.12+ · 🦆 DuckDB 1.5.5+ · 🔌 MCP SDK 2.0.0+
+**Requirements:** 🐍 Python 3.11–3.14 · 🦆 DuckDB 1.5.5+ · 🔌 MCP SDK 2.0.0+
 
 ---
 
@@ -314,7 +314,7 @@ duckdb-mcp-mini/
 │   └── cli.py             # argument parsing + entrypoint
 ├── tests/                 # pytest suite
 ├── .github/workflows/
-│   ├── ci.yml             # lint + type + test on py3.12 / py3.13
+│   ├── ci.yml             # lint + type + test on py3.11–3.14
 │   └── release.yml        # build on tag (PyPI publish disabled)
 ├── pyproject.toml
 ├── LICENSE
@@ -323,7 +323,7 @@ duckdb-mcp-mini/
 
 ### 🔄 CI / CD
 
-- **CI** (`.github/workflows/ci.yml`) runs black, ruff, mypy, and pytest on Python 3.12 and 3.13 for every push/PR to `main`, and checks that `duckdb-mcp --help` works.
+- **CI** (`.github/workflows/ci.yml`) runs black, ruff, mypy, and pytest on Python 3.11, 3.12, 3.13, and 3.14 for every push/PR to `main`, and checks that `duckdb-mcp --help` works.
 - **CD** (`.github/workflows/release.yml`) builds the sdist/wheel on a `v*` tag and attaches them to the GitHub Release. **PyPI publishing is intentionally disabled** — the `publish-pypi` job is gated behind `if: false`; see the comments in that file to enable it later.
 
 ### 🤝 Contributing
