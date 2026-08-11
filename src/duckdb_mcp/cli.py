@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 
 from duckdb_mcp import __version__
@@ -16,7 +17,18 @@ Examples:
   duckdb-mcp --db /path/to/db.duckdb
   duckdb-mcp --db :memory: --schema main
   duckdb-mcp --db analytics.duckdb --init-sql init.sql --read-only
+  duckdb-mcp --allow-unsigned-extensions      # or: ALLOW_UNSIGNED_EXTENSIONS=true
 """
+
+_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    """Read a boolean-ish environment variable (1/true/yes/on, case-insensitive)."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in _TRUTHY
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -36,6 +48,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=False,
         help="Open database in read-only mode (default: read-write)",
     )
+    parser.add_argument(
+        "--allow-unsigned-extensions",
+        action="store_true",
+        default=False,
+        help="Allow loading unsigned/community DuckDB extensions (default: false; env: ALLOW_UNSIGNED_EXTENSIONS)",
+    )
     return parser.parse_args(argv)
 
 
@@ -50,11 +68,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     session: DuckDBSession | None = None
     try:
+        # Enabled by either the CLI flag or the ALLOW_UNSIGNED_EXTENSIONS env var.
+        allow_unsigned = args.allow_unsigned_extensions or env_bool("ALLOW_UNSIGNED_EXTENSIONS")
         session = DuckDBSession(
             db_path=args.database,
             schema=args.schema,
             init_sql=args.init_sql,
             read_only=args.read_only,
+            allow_unsigned_extensions=allow_unsigned,
         )
         asyncio.run(_serve(session))
         return 0

@@ -31,12 +31,14 @@ class DuckDBSession:
         schema: str | None = None,
         init_sql: str | None = None,
         read_only: bool = False,
+        allow_unsigned_extensions: bool = False,
     ) -> None:
         self.conn: duckdb.DuckDBPyConnection | None = None
         self.default_database = db_path or ":memory:"
         self.default_schema = schema or "main"
         self.init_sql_file = init_sql
         self.read_only = read_only
+        self.allow_unsigned_extensions = allow_unsigned_extensions
 
         # Interpolate ${VAR} references in the environment BEFORE connecting, so
         # credentials (e.g. S3 keys) are resolved by the time DuckDB connects.
@@ -64,6 +66,14 @@ class DuckDBSession:
         """
         return _ENV_VAR_PATTERN.sub(lambda m: os.environ.get(m.group(1), ""), value)
 
+    def _connect_config(self) -> dict[str, str | bool | int | float | list[str]]:
+        """Build the DuckDB connection config (set once, at connect time)."""
+        config: dict[str, str | bool | int | float | list[str]] = {}
+        if self.allow_unsigned_extensions:
+            # Must be a connection-time setting; it cannot be enabled later.
+            config["allow_unsigned_extensions"] = "true"
+        return config
+
     def initialize_session(self) -> None:
         """Open the persistent connection and run the optional init SQL.
 
@@ -71,7 +81,7 @@ class DuckDBSession:
         an in-memory read-write connection instead of crashing the server.
         """
         try:
-            self.conn = duckdb.connect(self.default_database, read_only=self.read_only)
+            self.conn = duckdb.connect(self.default_database, read_only=self.read_only, config=self._connect_config())
 
             if self.default_schema != "main":
                 self.conn.execute(f"SET search_path TO {self.default_schema}")
@@ -82,7 +92,7 @@ class DuckDBSession:
                     self.conn.execute(init_sql)
         except Exception as exc:  # noqa: BLE001 - degrade gracefully, never crash
             print(f"Error initializing session: {exc}", file=sys.stderr)
-            self.conn = duckdb.connect(":memory:", read_only=False)
+            self.conn = duckdb.connect(":memory:", read_only=False, config=self._connect_config())
 
     def execute(self, sql: str) -> str:
         """Run ``sql`` and return the result as a pipe-delimited text table.

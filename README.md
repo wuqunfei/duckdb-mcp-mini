@@ -28,6 +28,7 @@ A minimal [**Model Context Protocol**](https://modelcontextprotocol.io) server t
 | 🧰 **Complete** | 12 tools covering query, write, CSV/Parquet loading, and full catalog/schema/table introspection. |
 | 🔒 **Safe by default** | Engine-enforced `--read-only` mode, plus a `list_environments` tool that **masks every secret** (`****`). |
 | ☁️ **Cloud-ready** | Query `s3://` Parquet directly, with `${VAR}` interpolation to keep credentials out of config files. |
+| 🧩 **Extensible** | Opt-in unsigned/community extensions (e.g. TA-Lib) via a single flag or env var. |
 | ✅ **Trustworthy** | Fully typed, linted, and tested — CI runs black + ruff + mypy + pytest on Python 3.12 & 3.13. |
 
 ---
@@ -102,6 +103,7 @@ uv run duckdb-mcp --db :memory:                        # via uv, no install
 | `--schema` | Default schema. Default: `main` |
 | `--init-sql` | Path to a SQL file executed once on startup |
 | `--read-only` | Open the database read-only (default: read-write) |
+| `--allow-unsigned-extensions` | Allow unsigned/community extensions (default: off; env: `ALLOW_UNSIGNED_EXTENSIONS`) |
 
 ### 🔒 Read-only mode
 
@@ -204,6 +206,40 @@ SELECT * FROM read_parquet('s3://my-data-bucket/data.parquet')
 ```
 
 > 🔐 Interpolation happens **before** the DuckDB connection is opened, so credentials are ready in time for connection setup and any `--init-sql`. Use the `list_environments` tool to confirm what's set — values are always masked.
+
+---
+
+## 🧩 Community & unsigned extensions
+
+DuckDB only loads **signed** extensions by default. To use community or self-hosted extensions, enable unsigned extensions with the `--allow-unsigned-extensions` flag **or** the `ALLOW_UNSIGNED_EXTENSIONS` environment variable (default: off):
+
+```bash
+duckdb-mcp --db :memory: --allow-unsigned-extensions
+# or
+ALLOW_UNSIGNED_EXTENSIONS=true duckdb-mcp --db :memory:
+```
+
+In a Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "duckdb": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/wuqunfei/duckdb-mcp-mini", "duckdb-mcp", "--db", ":memory:", "--allow-unsigned-extensions"]
+    }
+  }
+}
+```
+
+The flag is applied as a **connection-time** setting, so it's already on — just `INSTALL` and `LOAD` through the `execute` tool. For example, [neuesql/atm_talib](https://github.com/neuesql/atm_talib) (TA-Lib for DuckDB):
+
+```sql
+INSTALL talib FROM 'https://neuesql.github.io/atm_talib';
+LOAD talib;
+```
+
+> ⚠️ Unsigned extensions run native code with full trust. Only enable this for extensions from sources you trust.
 
 ---
 

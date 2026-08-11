@@ -78,6 +78,18 @@ def test_read_only_blocks_writes(tmp_path) -> None:
     reader.close()
 
 
+def test_allow_unsigned_extensions_default_false() -> None:
+    s = DuckDBSession(db_path=":memory:")
+    assert s.execute("SELECT current_setting('allow_unsigned_extensions')").splitlines()[-1] == "False"
+    s.close()
+
+
+def test_allow_unsigned_extensions_enabled() -> None:
+    s = DuckDBSession(db_path=":memory:", allow_unsigned_extensions=True)
+    assert s.execute("SELECT current_setting('allow_unsigned_extensions')").splitlines()[-1] == "True"
+    s.close()
+
+
 def test_init_sql_runs_on_startup(tmp_path) -> None:
     init = tmp_path / "init.sql"
     init.write_text("CREATE TABLE seeded (id INT); INSERT INTO seeded VALUES (42);")
