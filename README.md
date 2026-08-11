@@ -2,7 +2,7 @@
 
 A minimal, fast [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server for DuckDB with a persistent session.
 
-**Small surface. 2 runtime dependencies. 11 tools. ~10 ms per query.**
+**Small surface. 2 runtime dependencies. 12 tools. ~10 ms per query.**
 
 - **Persistent session** — one connection stays open for the process lifetime, so there's no per-query reconnect/subprocess overhead.
 - **Flexible config** — `--db`, `--schema`, `--init-sql`, `--read-only`, plus `${VAR}` environment interpolation.
@@ -165,7 +165,7 @@ Interpolation happens **before** the DuckDB connection is opened, so credentials
 
 ---
 
-## Tools (11)
+## Tools (12)
 
 | Category | Tool | Purpose |
 |----------|------|---------|
@@ -179,6 +179,7 @@ Interpolation happens **before** the DuckDB connection is opened, so credentials
 | Introspection | `list_tables` | List tables in the current schema |
 | Introspection | `list_columns` | Describe a table's columns |
 | Introspection | `list_extensions` | List loaded extensions |
+| Introspection | `list_environments` | List environment variables as `key: value`, with values masked (`****`, or `empty` when unset) |
 | Introspection | `check_version` | Report the DuckDB version |
 
 ### `query` vs `execute`
@@ -199,7 +200,7 @@ DuckDBSession(...)                     # src/duckdb_mcp/session.py
    └─ run --init-sql (if provided)           ← falls back to :memory: on error
    ↓
 create_server(session)                 # src/duckdb_mcp/server.py
-   └─ registers 11 tools on an mcp MCPServer; each calls dispatch_tool()
+   └─ registers 12 tools on an mcp MCPServer; each calls dispatch_tool()
    ↓
 server.run_stdio_async()               # serves MCP over stdio until client disconnects
 ```

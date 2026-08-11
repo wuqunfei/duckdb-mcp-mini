@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Generator
 
 import pytest
@@ -17,9 +18,9 @@ def session() -> Generator[DuckDBSession, Any, None]:
     s.close()
 
 
-def test_eleven_tools_registered() -> None:
-    assert len(TOOL_NAMES) == 11
-    assert {"query", "execute", "read_csv", "read_parquet"} <= set(TOOL_NAMES)
+def test_twelve_tools_registered() -> None:
+    assert len(TOOL_NAMES) == 12
+    assert {"query", "execute", "read_csv", "read_parquet", "list_environments"} <= set(TOOL_NAMES)
 
 
 def test_no_tool_falls_through_to_unknown(session: DuckDBSession) -> None:
@@ -58,6 +59,20 @@ def test_read_csv_loads_table(session: DuckDBSession, tmp_path) -> None:
     out = dispatch_tool(session, "read_csv", {"filepath": str(csv), "table_name": "people"})
     assert "Loaded CSV to 'people'" in out
     assert "2" in dispatch_tool(session, "query", {"sql": "SELECT COUNT(*) FROM people"})
+
+
+def test_list_environments_masks_values(session: DuckDBSession, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MY_SECRET", "super-secret-value")
+    monkeypatch.setenv("MY_EMPTY", "")
+    out = dispatch_tool(session, "list_environments", {})
+    assert "MY_SECRET: ****" in out
+    assert "MY_EMPTY: empty" in out
+    assert "super-secret-value" not in out  # value never leaks
+
+
+def test_list_environments_when_empty(session: DuckDBSession, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(os, "environ", {})
+    assert dispatch_tool(session, "list_environments", {}) == "No environment variables set"
 
 
 def test_check_version(session: DuckDBSession) -> None:

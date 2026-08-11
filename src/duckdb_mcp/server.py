@@ -7,6 +7,8 @@ MCP-facing layer is a set of thin decorated tool functions registered on an
 
 from __future__ import annotations
 
+import os
+
 from mcp.server import MCPServer
 
 from duckdb_mcp.session import DuckDBSession
@@ -26,8 +28,24 @@ TOOL_NAMES: list[str] = [
     "list_tables",
     "list_columns",
     "list_extensions",
+    "list_environments",
     "check_version",
 ]
+
+
+def mask_environment() -> str:
+    """List environment variables as ``key: value`` with values masked.
+
+    Non-empty values are shown as ``****`` so secrets are never revealed;
+    variables set to an empty string are shown as ``empty``.
+    """
+    if not os.environ:
+        return "No environment variables set"
+    lines = []
+    for key in sorted(os.environ):
+        value = os.environ[key]
+        lines.append(f"{key}: {'****' if value else 'empty'}")
+    return "\n".join(lines)
 
 
 def dispatch_tool(session: DuckDBSession, name: str, arguments: dict) -> str:
@@ -70,6 +88,9 @@ def dispatch_tool(session: DuckDBSession, name: str, arguments: dict) -> str:
 
     if name == "list_extensions":
         return session.execute("SELECT extension_name FROM duckdb_extensions() WHERE loaded")
+
+    if name == "list_environments":
+        return mask_environment()
 
     if name == "check_version":
         return session.execute("SELECT version()")
@@ -130,6 +151,11 @@ def create_server(session: DuckDBSession, version: str = "") -> MCPServer:
     def list_extensions() -> str:
         """List loaded extensions."""
         return dispatch_tool(session, "list_extensions", {})
+
+    @server.tool()
+    def list_environments() -> str:
+        """List environment variables as key: value, with values masked (**** / empty)."""
+        return dispatch_tool(session, "list_environments", {})
 
     @server.tool()
     def check_version() -> str:
