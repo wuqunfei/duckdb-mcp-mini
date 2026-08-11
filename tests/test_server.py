@@ -37,6 +37,25 @@ def test_no_tool_falls_through_to_unknown(session: DuckDBSession) -> None:
         assert not out.startswith("Unknown tool"), name
 
 
+@pytest.mark.parametrize(
+    "tool",
+    ["list_catalogs", "list_databases", "list_schemas", "list_tables", "list_extensions", "list_environments", "check_version"],
+)
+def test_introspection_tools_do_not_error(session: DuckDBSession, tool: str) -> None:
+    # Regression: list_databases/list_catalogs used to query non-existent
+    # information_schema tables and returned "Error: ...".
+    out = dispatch_tool(session, tool, {})
+    assert not out.startswith("Error:"), (tool, out)
+
+
+def test_list_databases_shows_default_database(session: DuckDBSession) -> None:
+    assert "memory" in dispatch_tool(session, "list_databases", {})
+
+
+def test_list_catalogs_shows_default_catalog(session: DuckDBSession) -> None:
+    assert "memory" in dispatch_tool(session, "list_catalogs", {})
+
+
 def test_dispatch_query(session: DuckDBSession) -> None:
     assert dispatch_tool(session, "query", {"sql": "SELECT 1 AS a"}).splitlines()[-1] == "1"
 
