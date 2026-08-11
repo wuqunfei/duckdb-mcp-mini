@@ -8,6 +8,7 @@ import os
 import sys
 
 from duckdb_mcp import __version__
+from duckdb_mcp.auth import TOKEN_ENV
 from duckdb_mcp.server import create_server
 from duckdb_mcp.session import DuckDBSession
 
@@ -66,13 +67,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-async def _serve(session: DuckDBSession, transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000) -> None:
+async def _serve(session: DuckDBSession, transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000, auth_token: str | None = None) -> None:
     """Serve the MCP protocol over the chosen transport until the client disconnects."""
-    server = create_server(session, version=__version__)
     if transport == "http":
+        server = create_server(session, version=__version__, auth_token=auth_token, base_url=f"http://{host}:{port}")
         await server.run_streamable_http_async(host=host, port=port)
     else:
-        await server.run_stdio_async()
+        await create_server(session, version=__version__).run_stdio_async()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -82,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # Enabled by either the CLI flag or the ALLOW_UNSIGNED_EXTENSIONS env var.
         allow_unsigned = args.allow_unsigned_extensions or env_bool("ALLOW_UNSIGNED_EXTENSIONS")
+
+        # Bearer token comes from the environment only (keeps it out of `ps`).
+        auth_token = (os.environ.get(TOKEN_ENV) or "").strip() or None
+        if auth_token and args.transport != "http":
+            print(f"Warning: {TOKEN_ENV} is set but only applies to --transport http; ignoring.", file=sys.stderr)
+
         session = DuckDBSession(
             db_path=args.database,
             schema=args.schema,
@@ -89,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
             read_only=args.read_only,
             allow_unsigned_extensions=allow_unsigned,
         )
-        asyncio.run(_serve(session, transport=args.transport, host=args.host, port=args.port))
+        asyncio.run(_serve(session, transport=args.transport, host=args.host, port=args.port, auth_token=auth_token))
         return 0
     except KeyboardInterrupt:
         return 0

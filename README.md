@@ -30,6 +30,7 @@ A minimal [**Model Context Protocol**](https://modelcontextprotocol.io) server t
 | ☁️ **Cloud-ready** | Query `s3://` Parquet directly, with `${VAR}` interpolation to keep credentials out of config files. |
 | 🧩 **Extensible** | Opt-in unsigned/community extensions (e.g. TA-Lib) via a single flag or env var. |
 | 🔌 **Local or remote** | Run over **stdio** (Claude Desktop) or **streamable HTTP** — one `--transport` flag. |
+| 🔑 **Token auth** | Protect the HTTP transport with a bearer token from a single env var. |
 | ✅ **Trustworthy** | Fully typed, linted, and tested — CI runs black + ruff + mypy + pytest on Python 3.12 & 3.13. |
 
 ---
@@ -149,7 +150,33 @@ Point a network MCP client at the `/mcp` endpoint:
 }
 ```
 
-> 🔒 `--host` defaults to `127.0.0.1` (localhost only). Bind to `0.0.0.0` only on a trusted network — there is no built-in auth, and the SQL tools run with full database access.
+> 🔒 `--host` defaults to `127.0.0.1` (localhost only). Bind to `0.0.0.0` only on a trusted network, and protect it with a bearer token (below).
+
+### 🔑 Bearer token (HTTP transport)
+
+Set the `MCP_AUTH_TOKEN` environment variable to require an `Authorization: Bearer <token>` header on every `http` request. Requests with a missing or wrong token get **401**.
+
+```bash
+export MCP_AUTH_TOKEN="a-long-random-secret"
+duckdb-mcp --transport http --host 0.0.0.0 --port 8000 --db analytics.duckdb
+```
+
+Client config:
+
+```json
+{
+  "mcpServers": {
+    "duckdb": {
+      "url": "http://127.0.0.1:8000/mcp",
+      "headers": { "Authorization": "Bearer a-long-random-secret" }
+    }
+  }
+}
+```
+
+- 🌱 **Environment only** — the token is read from `MCP_AUTH_TOKEN`, never a CLI flag, so it stays out of `ps` and shell history.
+- 🔌 **HTTP only** — the token is ignored for `stdio` (the client owns the process); setting it there prints a warning.
+- ⚠️ **Access control, not identity** — every caller with the token gets full database access. It is *not* a substitute for network controls or `--read-only`; pair them.
 
 ---
 

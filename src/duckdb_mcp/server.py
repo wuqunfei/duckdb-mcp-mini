@@ -13,6 +13,7 @@ from collections.abc import Callable
 
 from mcp.server import MCPServer
 
+from duckdb_mcp.auth import StaticTokenVerifier, build_auth_settings
 from duckdb_mcp.session import DuckDBSession
 
 SERVER_NAME = "duckdb-mcp-mini"
@@ -81,9 +82,20 @@ def dispatch_tool(session: DuckDBSession, name: str, arguments: dict) -> str:
     return handler(session, arguments)
 
 
-def create_server(session: DuckDBSession, version: str = "") -> MCPServer:
-    """Build the :class:`MCPServer`, exposing every handler as a typed MCP tool."""
-    server: MCPServer = MCPServer(SERVER_NAME, version=version)
+def create_server(session: DuckDBSession, version: str = "", auth_token: str | None = None, base_url: str | None = None) -> MCPServer:
+    """Build the :class:`MCPServer`, exposing every handler as a typed MCP tool.
+
+    If ``auth_token`` is given, the HTTP transport requires an
+    ``Authorization: Bearer <auth_token>`` header (``base_url`` must be the
+    server's own ``http://host:port``).
+    """
+    auth_kwargs: dict = {}
+    if auth_token:
+        if not base_url:
+            raise ValueError("base_url is required when auth_token is set")
+        auth_kwargs = {"token_verifier": StaticTokenVerifier(auth_token), "auth": build_auth_settings(base_url)}
+
+    server: MCPServer = MCPServer(SERVER_NAME, version=version, **auth_kwargs)
 
     @server.tool()
     def query(sql: str) -> str:
