@@ -153,10 +153,21 @@ duckdb-mcp \
   --host 0.0.0.0 \
   --port 8000 \
   --db /data/analytics.duckdb \
+  --init-sql /data/init.sql \
   --read-only
 
 # → serving at  http://0.0.0.0:8000/mcp
 ```
+
+`--init-sql` runs a SQL file once, when the connection opens. Combined with `--read-only` it must be read-only-safe (loading extensions or setting options is fine — creating tables is not):
+
+```sql
+-- /data/init.sql
+INSTALL httpfs; LOAD httpfs;     -- read remote/S3 data
+SET memory_limit = '4GB';
+```
+
+> Drop `--read-only` if your init script needs to create tables or views.
 
 No install? Run the same thing straight from Git:
 
