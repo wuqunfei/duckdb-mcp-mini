@@ -33,12 +33,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/*
+          # Only the distributables (uv build also drops a .gitignore in dist/).
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
 
       - name: Attach artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
 
   publish-pypi:
     needs: build
