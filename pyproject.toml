@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "duckdb-mcp"
-version = "0.2.0"
+version = "0.2.1"
 description = "DuckDB MCP Server - persistent session with environment variable support, read-only/write mode, and flexible configuration"
 readme = "README.md"
 license = { text = "MIT" }
