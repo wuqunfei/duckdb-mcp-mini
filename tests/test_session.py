@@ -33,6 +33,14 @@ def test_execute_renders_null(session: DuckDBSession) -> None:
     assert "NULL" in session.execute("SELECT NULL AS a")
 
 
+def test_execute_timestamptz(session: DuckDBSession) -> None:
+    # TIMESTAMPTZ fetches require pytz at runtime (duckdb converts to
+    # tz-aware datetimes); it must stay a declared dependency.
+    out = session.execute("SELECT TIMESTAMPTZ '2025-01-01 00:00:00+00' AS ingested_at")
+    assert not out.startswith("Error:")
+    assert "2025-01-01" in out
+
+
 def test_execute_error_is_returned_as_text(session: DuckDBSession) -> None:
     out = session.execute("SELECT * FROM does_not_exist")
     assert out.startswith("Error:")

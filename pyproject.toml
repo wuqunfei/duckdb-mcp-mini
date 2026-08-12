@@ -39,6 +39,10 @@ dependencies = [
     # DuckDB version — change this pin to target a different release.
     "duckdb==1.5.2",
     "mcp>=2.0.0",
+    # duckdb imports pytz at fetch time to convert TIMESTAMPTZ values but
+    # does not declare it; without it any SELECT touching a TIMESTAMPTZ
+    # column fails with "Required module 'pytz' failed to import".
+    "pytz>=2024.1",
 ]
 
 [project.optional-dependencies]
